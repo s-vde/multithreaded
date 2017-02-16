@@ -17,7 +17,7 @@ class work_stealing_queue
 {
 public:
 
-   work_stealing_queue() : m_jobs({}), m_head(0), m_tail(0), m_mask(SIZE - 1)
+   work_stealing_queue() : m_jobs({}), m_head(0), m_tail(0), m_mask(SIZE-1)
    {
       pthread_mutex_init(&m_mutex, NULL);
    }
@@ -27,8 +27,8 @@ public:
       unsigned int tail = m_tail.load();
       unsigned int head = m_head.load();
 
-      // if (m_tail < m_head.load() + m_mask) // && tail < max_size    // CORRECT
-      if (tail < head+SIZE)  // && tail < max_size         // DATARACE
+      // if (m_tail < m_mask) // && tail < max_size    // CORRECT
+      if (tail < head+SIZE)  // && tail < max_size     // DATARACE
       {
          m_jobs[tail & m_mask] = job;
          m_tail.store(tail+1);
@@ -40,8 +40,7 @@ public:
       unsigned int head = m_head.load();
       m_head.store(head+1);
 
-      unsigned int tail = m_tail.load();
-      if (head < tail)
+      if (head < m_tail.load())
       {
          int job = m_jobs[head & m_mask];
          return job;
@@ -59,19 +58,16 @@ private:
 
    pthread_mutex_t m_mutex;
 
-}; // end struct work_stealing_queue
-
-//--------------------------------------------------------------------------------------------------
-
-work_stealing_queue Q;
+}; // end class work_stealing_queue
 
 //--------------------------------------------------------------------------------------------------
 
 void* master_thread(void* args)
 {
+   auto* queue = static_cast<work_stealing_queue*>(args);
    for (int i = 0; i < 2; ++i)
    {
-      Q.push(i);
+      queue->push(i);
    }
    pthread_exit(0);
 }
@@ -80,9 +76,10 @@ void* master_thread(void* args)
 
 void* worker_thread(void* args)
 {
+   auto* queue = static_cast<work_stealing_queue*>(args);
    for (int i = 0; i < 1; ++i)
    {
-      int job = Q.steal();
+      int job = queue->steal();
    }
    pthread_exit(0);
 }
@@ -91,11 +88,13 @@ void* worker_thread(void* args)
 
 int main()
 {
+   work_stealing_queue queue;
+   
    pthread_t master;
    pthread_t worker;
 
-   pthread_create(&master, 0, master_thread, 0);
-   pthread_create(&worker, 0, worker_thread, 0);
+   pthread_create(&master, 0, master_thread, &queue);
+   pthread_create(&worker, 0, worker_thread, &queue);
 
    pthread_join(master, 0);
    pthread_join(worker, 0);
