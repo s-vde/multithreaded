@@ -10,11 +10,11 @@ int main()
     {
         m.lock();
         int x_local = x;
+        m.unlock();
         if (x_local == 1)
         {
             y = 1;                  // DATARACE
         }
-        m.unlock();
     });
     
     std::thread t2([&m, &x, &y, &z]
