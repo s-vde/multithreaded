@@ -24,7 +24,7 @@ int x[NUM_THR];
 void *writer(void *arg)
 {
 	x[0] = 1;
-	return NULL;
+	pthread_exit(0);
 }
 
 void *reader(void *arg)
@@ -32,7 +32,7 @@ void *reader(void *arg)
 	int id = *(int*) arg;
 	int local = x[id];
 	local = x[0];
-	return NULL;
+	pthread_exit(0);
 }
 
 // Main
